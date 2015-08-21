@@ -1,0 +1,2 @@
+# cat=basic/string; type=string; label=Cach path for browscap.ini
+cachePath = typo3temp/tx_jhbrowscap/
