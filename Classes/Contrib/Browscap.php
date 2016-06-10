@@ -1,6 +1,8 @@
 <?php
 namespace Heilmann\JhBrowscap\Contrib;
 
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+
 /**
  * Browscap.ini parsing class with caching and update capabilities
  *
@@ -98,7 +100,7 @@ class Browscap
      * is MINIMAL, so there is no reason to use the standard file whatsoever. Either go for light,
      * which is blazing fast, or get the full one. (note: light version doesn't work, a fix is on its way)
      */
-    public $remoteIniUrl = 'tcp://browscap.org:80/stream?q=PHP_BrowscapINI';
+    public $remoteIniUrl = 'http://browscap.org/stream?q=PHP_BrowscapINI';
     public $remoteVerUrl = 'http://browscap.org/version';
     public $timeout = 5;
     public $updateInterval = 432000; // 5 days
@@ -1122,116 +1124,9 @@ class Browscap
      */
     protected function _getRemoteData($url)
     {
-        ini_set('user_agent', $this->_getUserAgent());
+        $data = GeneralUtility::getUrl($url);
 
-        switch ($this->_getUpdateMethod()) {
-            case self::UPDATE_LOCAL:
-                $file = file_get_contents($url);
-
-                if ($file !== false) {
-                    return $file;
-                } else {
-                    throw new Exception('Cannot open the local file');
-                }
-            case self::UPDATE_FOPEN:
-                if (ini_get('allow_url_fopen') && function_exists('file_get_contents')) {
-                    // include proxy settings in the file_get_contents() call
-                    $context = $this->_getStreamContext();
-                    $file    = file_get_contents($url, false, $context);
-
-                    if ($file !== false) {
-                        return $file;
-                    }
-                }// else try with the next possibility (break omitted)
-            case self::UPDATE_FSOCKOPEN:
-                if (function_exists('fsockopen')) {
-                    $remote_url     = parse_url($url);
-                    $contextOptions = $this->getStreamContextOptions();
-
-                    $errno   = 0;
-                    $errstr  = '';
-
-                    if (empty($contextOptions)) {
-                        $port           = (empty($remote_url['port']) ? 80 : $remote_url['port']);
-                        $remote_handler = fsockopen($remote_url['host'], $port, $errno, $errstr, $this->timeout);
-                    } else {
-                        $context = $this->_getStreamContext();
-
-                        $remote_handler = stream_socket_client(
-                            $url, $errno, $errstr, $this->timeout, STREAM_CLIENT_CONNECT, $context
-                        );
-                    }
-
-                    if ($remote_handler) {
-                        stream_set_timeout($remote_handler, $this->timeout);
-
-                        if (isset($remote_url['query'])) {
-                            $remote_url['path'] .= '?' . $remote_url['query'];
-                        }
-
-                        $out = sprintf(
-                            self::REQUEST_HEADERS,
-                            $remote_url['path'],
-                            $remote_url['host'],
-                            $this->_getUserAgent()
-                        );
-
-                        fwrite($remote_handler, $out);
-
-                        $response = fgets($remote_handler);
-                        if (strpos($response, '200 OK') !== false) {
-                            $file = '';
-                            while (!feof($remote_handler)) {
-                                $file .= fgets($remote_handler);
-                            }
-
-                            $file = str_replace("\r\n", "\n", $file);
-                            $file = explode("\n\n", $file);
-                            array_shift($file);
-
-                            $file = implode("\n\n", $file);
-
-                            fclose($remote_handler);
-
-                            return $file;
-                        }
-                    }
-                }// else try with the next possibility
-            case self::UPDATE_CURL:
-                if (extension_loaded('curl')) { // make sure curl is loaded
-                    $ch = curl_init($url);
-
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->timeout);
-                    curl_setopt($ch, CURLOPT_USERAGENT, $this->_getUserAgent());
-
-                    $file = curl_exec($ch);
-
-                    curl_close($ch);
-
-                    if ($file !== false) {
-                        return $file;
-                    }
-                }// else try with the next possibility
-            case false:
-                throw new Exception('Your server can\'t connect to external resources. Please update the file manually.');
-        }
-
-        return '';
-    }
-
-    /**
-     * Format the useragent string to be used in the remote requests made by the
-     * class during the update process.
-     *
-     * @return string the formatted user agent
-     */
-    protected function _getUserAgent()
-    {
-        $ua = str_replace('%v', self::VERSION, $this->userAgent);
-        $ua = str_replace('%m', $this->_getUpdateMethod(), $ua);
-
-        return $ua;
+        return $data === false ? '' : $data;
     }
 }
 
