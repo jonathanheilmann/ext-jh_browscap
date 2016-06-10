@@ -1,13 +1,11 @@
 <?php
 namespace Heilmann\JhBrowscap\Utility;
 
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use Heilmann\JhBrowscap\Contrib\Browscap;
 /***************************************************************
  *
  *  Copyright notice
  *
- *  (c) 2015 Jonathan Heilmann <mail@jonathan-heilmann.de>
+ *  (c) 2015-2016 Jonathan Heilmann <mail@jonathan-heilmann.de>
  *
  *  All rights reserved
  *
@@ -28,40 +26,44 @@ use Heilmann\JhBrowscap\Contrib\Browscap;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use Heilmann\JhBrowscap\Contrib\Browscap;
+
 /**
  * Class BrowscapUtility
  * @package Heilmann\JhBrowsecap\Utility
  */
-class BrowscapUtility {
+class BrowscapUtility
+{
 
     /**
      * @var string
      */
-    static protected $cachePath = 'typo3temp/tx_jhbrowscap/';
+    const CACHE_PATH = 'typo3temp/tx_jhbrowscap/';
 
     /**
      * getBrowser
      *
      * @param string $user_agent   the user agent string
      * @param bool   $return_array whether return an array or an object
-     * 
+     *
      * @return \stdClass|array  the object containing the browsers details. Array if
      *                    $return_array is set to true.
      */
-    static public function getBrowser($user_agent = null, $return_array = false) {
-        $cachePath = self::$cachePath;
+    static public function getBrowser($user_agent = null, $return_array = false)
+    {
+        $cachePath = self::CACHE_PATH;
         $extConf = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['jh_browscap']);
 
-        if (preg_match('/^typo3temp\//', $extConf['cachePath'])) {
+        if (preg_match('/^typo3temp\//', $extConf['cachePath']))
             $cachePath = rtrim($extConf['cachePath'], '/');
-        }
-        if (!is_dir(PATH_site . $cachePath)) {
-            GeneralUtility::mkdir_deep(PATH_site, $cachePath);
-        }
 
+        if (!is_dir(PATH_site . $cachePath))
+            GeneralUtility::mkdir_deep(PATH_site, $cachePath);
+
+        /** @var Browscap $browscap */
         $browscap = new Browscap($cachePath);
         $browscap->doAutoUpdate = false;
-        $info = $browscap->getBrowser($user_agent, $return_array);
-        return $info;
+        return $browscap->getBrowser($user_agent, $return_array);
     }
 }
